@@ -19,7 +19,7 @@ Copy the files to their proper location
 `configuration.yaml`:
 ```yaml
 sensor:
-    - platform: openweathermap_all
+    - platform: openweathermap_air_quality
       api_key: YOUR_API_KEY
       latitude: YOUR_LATITUDE
       longitude: YOUR_LONGITUDE
