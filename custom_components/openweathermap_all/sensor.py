@@ -180,15 +180,6 @@ class OwmPollutionSensor(Entity):
                     fdict.update(f["components"])
                     fdict.update(f["main"])
                     self._extra_state_attributes["forecast"].append(fdict)
-
-            # onecall
-
-            elif self.type == 'uvi':
-                try:
-                    self._state = float(owmData["onecall"]["current"]["uvi"])
-                except:
-                    _LOGGER.warning("Did not get proper reply from 'onecall'.")
-                    self._state = -1
                 
 
         except ValueError:
