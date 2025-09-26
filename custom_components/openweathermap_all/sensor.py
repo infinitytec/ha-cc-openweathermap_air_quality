@@ -32,14 +32,14 @@ SENSOR_PREFIX_ROOT = 'OWM '
 SENSOR_PREFIX_POLLUTION = 'Pollution '
 
 SENSOR_TYPES = {
-    'co': ['Carbon monoxide (CO)', 'μg/m3', 'mdi:molecule-co'],
-    'no': ['Nitrogen monoxide (NO)', 'μg/m3', 'mdi:smog'],
-    'no2': ['Nitrogen dioxide (NO2)', 'μg/m3', 'mdi:smog'],
-    'o3': ['Ozone (O3)', 'μg/m3', 'mdi:skull-outline'],
-    'so2': ['Sulphur dioxide (SO2)', 'μg/m3', 'mdi:smog'],
-    'nh3': ['Ammonia (NH3)', 'μg/m3', 'mdi:skull'],
-    'pm2_5': ['Fine particles (PM2.5)', 'μg/m3', 'mdi:grain'],
-    'pm10': ['Coarse particles (PM10)', 'μg/m3', 'mdi:grain'],
+    'co': ['Carbon monoxide (CO)', 'μg/m³', 'mdi:molecule-co'],
+    'no': ['Nitrogen monoxide (NO)', 'μg/m³', 'mdi:smog'],
+    'no2': ['Nitrogen dioxide (NO2)', 'μg/m³', 'mdi:smog'],
+    'o3': ['Ozone (O3)', 'μg/m³', 'mdi:skull-outline'],
+    'so2': ['Sulphur dioxide (SO2)', 'μg/m³', 'mdi:smog'],
+    'nh3': ['Ammonia (NH3)', 'μg/m³', 'mdi:skull'],
+    'pm2_5': ['Fine particles (PM2.5)', 'μg/m³', 'mdi:grain'],
+    'pm10': ['Coarse particles (PM10)', 'μg/m³', 'mdi:grain'],
     'aqi': ['Overall Air Quality', '', 'mdi:lungs'],
     'forecast': ['Forecast', '', 'mdi:eye-arrow-right']
 }
