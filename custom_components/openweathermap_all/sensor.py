@@ -105,6 +105,14 @@ class OwmPollutionSensor(Entity):
         self._icon = SENSOR_TYPES[self.type][2]
         self._state = None
         self._extra_state_attributes = None
+        
+        # Add a unique_id attribute
+        self._unique_id = f"owm_pollution_{self.type}_{data.lat}_{data.lon}"
+
+    @property
+    def unique_id(self):
+        """Return a unique, Home Assistant-friendly identifier for this entity."""
+        return self._unique_id
 
     @property
     def name(self):
