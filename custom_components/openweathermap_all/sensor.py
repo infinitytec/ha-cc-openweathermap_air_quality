@@ -41,7 +41,6 @@ SENSOR_TYPES = {
     'pm2_5': ['Fine particles (PM2.5)', 'μg/m3', 'mdi:grain'],
     'pm10': ['Coarse particles (PM10)', 'μg/m3', 'mdi:grain'],
     'aqi': ['Overall Air Quality', '', 'mdi:lungs'],
-    'uvi': ['Ultraviolet index', 'idx', 'mdi:hazard-lights'],
     'forecast': ['Forecast', '', 'mdi:eye-arrow-right']
 }
 
