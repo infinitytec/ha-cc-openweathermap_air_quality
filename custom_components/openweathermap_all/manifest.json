@@ -1,12 +1,12 @@
 {
-    "domain": "openweathermap_all",
-    "name": "OpenWeatherMap All API",
-    "documentation": "https://github.com/viktak/ha-cc-openweathermap_all",
-    "issue_tracker": "https://github.com/viktak/ha-cc-openweathermap_all/issues",
+    "domain": "openweathermap_air_quality",
+    "name": "OpenWeatherMap Air Quality",
+    "documentation": "https://github.com/infinitytec/ha-cc-openweathermap_air_quality",
+    "issue_tracker": "https://github.com/infinitytec/ha-cc-openweathermap_air_quality/issues",
     "dependencies": [],
-    "codeowners": ["@viktak"],
+    "codeowners": ["@infinitytec"],
     "requirements": ["owm2json==0.1.89"],
-    "version": "0.0.1",
+    "version": "0.0.2",
     "iot_class": "cloud_polling"
   }
   
