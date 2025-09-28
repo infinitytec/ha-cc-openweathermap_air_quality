@@ -1,22 +1,36 @@
 
 ![Home_Assistant](https://img.shields.io/badge/Home-Assistant-blue) [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs) [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs) ![GitHub](https://img.shields.io/github/license/viktak/ha-cc-openweathermap_all) ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/viktak/ha-cc-openweathermap_all)
 
-# Forked from ha-cc-openweathermap_all by [viktak](https://github.com/viktak/ha-cc-openweathermap_all)
+# OpenWeatherMap Air Quality
 Home Assistant custom component combining multiple OpenWeatherMap API calls for air quality.
 
-This fork is to try to maintain functionality of the integration. The API requires a credit card number.
+Forked from ha-cc-openweathermap_all by [viktak](https://github.com/viktak/ha-cc-openweathermap_all). This fork is to try to maintain functionality of the integration. The API does require a credit card number, which is what led to the original version being archived.
+
+
+
+# THIS IS A WORK IN PROGRESS. THINGS MAY BREAK. DOES USE VIBE CODING!
+
+Improvements over the original version (not all are implemented yet):
+- Dropped the unsupported UV index sensor
+- Virtual device for better UI navigation
+- UI configuration (not started)
+- EPA estimated AQI (not started)
+- Ensures values do not drop to negative numbers (in testing)
+- Updated units to match Home Assistant guidelines
+
+
 
 ## Installation
 
 ### Automatic
-Use HACS to install it.
+Use HACS to install it from this repository.
 
 ### Manual
 Copy the files to their proper location
 
 ## Usage
 
-`configuration.yaml`:
+Add to your `configuration.yaml` file:
 ```yaml
 sensor:
     - platform: openweathermap_air_quality
@@ -42,7 +56,7 @@ Currently, the following sensors are created by this integration:
 - sensor.owm_pollution_sulphur_dioxide_so2
 - sensor.owm_pollution_forecast
 
-More are coming in the future as the API, my free time and my skills allow. :)
+
 
 ## Sample screenshot of sensors (using [mini-graph-card](https://github.com/kalkih/mini-graph-card))
 
