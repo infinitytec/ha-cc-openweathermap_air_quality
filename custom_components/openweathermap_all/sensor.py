@@ -58,17 +58,12 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         _LOGGER.error(error)
         return False
 
-    entities = []
-
-    for resource in SENSOR_TYPES:
-        sensor_type = resource.lower()
-        entities.append(OwmPollutionSensor(data, sensor_type))
+    entities = [OwmPollutionSensor(data, resource.lower()) for resource in SENSOR_TYPES]
 
     async_add_entities(entities)
 
 
-class OwmPollutionData(object):
-
+class OwmPollutionData:
     def __init__(self, api_list, lat, lon, appid):
         self._state = None
         self.lat = lat
@@ -80,7 +75,6 @@ class OwmPollutionData(object):
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def update(self, sensorType):
         _LOGGER.debug("Updating OWM pollution sensors")
-  
         myOWM = owm2json.owmRequestor(self.api_list, self.lat, self.lon, self.appid)
         try:
             self.data = json.loads(myOWM.GetData())
@@ -88,6 +82,14 @@ class OwmPollutionData(object):
             _LOGGER.error("Error occurred while fetching data: %r", exc)
             self.data = None
             return False
+
+
+def safe_value(val):
+    """Convert to float and clamp to zero to avoid negatives."""
+    try:
+        return max(float(val), 0.0)
+    except (ValueError, TypeError):
+        return 0.0
 
 
 class OwmPollutionSensor(Entity):
@@ -111,7 +113,6 @@ class OwmPollutionSensor(Entity):
 
     @property
     def unique_id(self):
-        """Return a unique, Home Assistant-friendly identifier for this entity."""
         return self._unique_id
 
     @property
@@ -135,59 +136,49 @@ class OwmPollutionSensor(Entity):
         return self._extra_state_attributes
 
     def update(self):
-        """Fetch new state data for the sensor.
-
-        This is the only method that should fetch new data for Home Assistant.
-        """
+        """Fetch new state data for the sensor."""
         self.data.update(self.type)
-
         owmData = self.data.data
 
-        # _LOGGER.debug("pollutionData = %s", pollutionData)
-
         try:
-
-            #   air_pollution
-
             if self.type == 'co':
-                self._state = float(owmData["air_pollution"]["list"][0]["components"]["co"])
+                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["co"])
 
             elif self.type == 'no':
-                self._state = float(owmData["air_pollution"]["list"][0]["components"]["no"])
+                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["no"])
 
             elif self.type == 'no2':
-                self._state = float(owmData["air_pollution"]["list"][0]["components"]["no2"])
+                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["no2"])
 
             elif self.type == 'o3':
-                self._state = float(owmData["air_pollution"]["list"][0]["components"]["o3"])
+                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["o3"])
 
             elif self.type == 'so2':
-                self._state = float(owmData["air_pollution"]["list"][0]["components"]["so2"])
+                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["so2"])
 
             elif self.type == 'nh3':
-                self._state = float(owmData["air_pollution"]["list"][0]["components"]["nh3"])
+                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["nh3"])
 
             elif self.type == 'pm2_5':
-                self._state = float(owmData["air_pollution"]["list"][0]["components"]["pm2_5"])
+                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["pm2_5"])
 
             elif self.type == 'pm10':
-                self._state = float(owmData["air_pollution"]["list"][0]["components"]["pm10"])
+                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["pm10"])
 
             elif self.type == 'aqi':
-                self._state = float(owmData["air_pollution"]["list"][0]["main"]["aqi"])
-
-            # air_pollution/forecast
+                self._state = safe_value(owmData["air_pollution"]["list"][0]["main"]["aqi"])
 
             elif self.type == 'forecast':
-                self._state = float(owmData["air_pollution/forecast"]["list"][0]["main"]["aqi"])
+                self._state = safe_value(owmData["air_pollution/forecast"]["list"][0]["main"]["aqi"])
                 self._extra_state_attributes = dict(owmData["air_pollution"]["list"][0]["components"])
                 self._extra_state_attributes["forecast"] = []
                 for f in owmData["air_pollution/forecast"]["list"]:
                     fdict = {"datetime": datetime.fromtimestamp(f["dt"], tz=timezone.utc).isoformat()}
-                    fdict.update(f["components"])
+                    # clamp each forecast component too
+                    components = {k: safe_value(v) for k, v in f["components"].items()}
+                    fdict.update(components)
                     fdict.update(f["main"])
                     self._extra_state_attributes["forecast"].append(fdict)
-                
 
-        except ValueError:
+        except (ValueError, KeyError, TypeError):
             self._state = None
