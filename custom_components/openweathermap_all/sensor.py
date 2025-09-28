@@ -11,6 +11,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.const import (CONF_API_KEY, CONF_LATITUDE, CONF_LONGITUDE)
 from homeassistant.util import Throttle
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.device_registry import DeviceInfo
 
 import owm2json
 
@@ -25,7 +26,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_API_KEY): cv.string,
     vol.Required(CONF_LATITUDE): cv.string,
     vol.Required(CONF_LONGITUDE): cv.string
-    # vol.Required("refresh_interval"): cv.positive_int
 })
 
 SENSOR_PREFIX_ROOT = 'OWM '
@@ -107,7 +107,7 @@ class OwmPollutionSensor(Entity):
         self._icon = SENSOR_TYPES[self.type][2]
         self._state = None
         self._extra_state_attributes = None
-        
+
         # Add a unique_id attribute
         self._unique_id = f"owm_pollution_{self.type}_{data.lat}_{data.lon}"
 
@@ -134,6 +134,17 @@ class OwmPollutionSensor(Entity):
     @property
     def extra_state_attributes(self):
         return self._extra_state_attributes
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information for the OWM device registry entry."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{self.data.lat}_{self.data.lon}")},
+            name=f"OWM Air Quality ({self.data.lat}, {self.data.lon})",
+            manufacturer="OpenWeatherMap",
+            model="Air Pollution API",
+            configuration_url="https://openweathermap.org/api"
+        )
 
     def update(self):
         """Fetch new state data for the sensor."""
@@ -174,7 +185,6 @@ class OwmPollutionSensor(Entity):
                 self._extra_state_attributes["forecast"] = []
                 for f in owmData["air_pollution/forecast"]["list"]:
                     fdict = {"datetime": datetime.fromtimestamp(f["dt"], tz=timezone.utc).isoformat()}
-                    # clamp each forecast component too
                     components = {k: safe_value(v) for k, v in f["components"].items()}
                     fdict.update(components)
                     fdict.update(f["main"])
