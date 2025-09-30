@@ -1,32 +1,29 @@
-"""Platform for sensor integration (OWM -> JSON).
+"""Platform for OpenWeatherMap Air Quality sensors."""
 
-Supports both legacy YAML platform setup (async_setup_platform) and
-modern UI config flow setup (async_setup_entry).
-"""
-
+from __future__ import annotations
 import logging
 from datetime import timedelta, datetime, timezone
 import json
 import requests
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 import homeassistant.helpers.config_validation as cv
-from homeassistant.const import (CONF_API_KEY, CONF_LATITUDE, CONF_LONGITUDE)
+from homeassistant.const import CONF_API_KEY, CONF_LATITUDE, CONF_LONGITUDE
 from homeassistant.util import Throttle
-from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.config_entries import ConfigEntry
 
 import owm2json
-
-DOMAIN = "owm2json"
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(minutes=10)
 MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=5)
 
-# Keep PLATFORM_SCHEMA for YAML compatibility (optional)
+# YAML compatibility (optional)
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_API_KEY): cv.string,
     vol.Required(CONF_LATITUDE): cv.string,
@@ -49,47 +46,36 @@ SENSOR_TYPES = {
     'forecast': ['Forecast', '', 'mdi:eye-arrow-right']
 }
 
+DOMAIN = "openweathermap_air_quality"
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """
-    Legacy YAML setup support.
 
-    Example YAML:
-    sensor:
-      - platform: owm2json
-        api_key: !secret owm_api_key
-        latitude: 52.52
-        longitude: 13.41
-    """
+async def async_setup_platform(hass: HomeAssistant, config, async_add_entities: AddEntitiesCallback, discovery_info=None):
+    """Legacy YAML setup support."""
     lat = config.get(CONF_LATITUDE)
     lon = config.get(CONF_LONGITUDE)
-    appid = config.get(CONF_API_KEY)
+    api_key = config.get(CONF_API_KEY)
     api_list = ["air_pollution/forecast", "air_pollution", "onecall"]
 
     try:
-        data = OwmPollutionData(api_list, lat, lon, appid)
+        data = OwmPollutionData(api_list, lat, lon, api_key)
     except requests.exceptions.HTTPError as error:
         _LOGGER.error("OWM2JSON initialization failed: %s", error)
         return False
 
-    entities = [OwmPollutionSensor(data, resource.lower()) for resource in SENSOR_TYPES]
+    entities = [OwmPollutionSensor(data, sensor_type) for sensor_type in SENSOR_TYPES]
     async_add_entities(entities, update_before_add=True)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     """Set up sensors from a config entry."""
-
     api_key = entry.data[CONF_API_KEY]
     lat = entry.data[CONF_LATITUDE]
     lon = entry.data[CONF_LONGITUDE]
-
-    # Create your data object
     api_list = ["air_pollution/forecast", "air_pollution", "onecall"]
+
     data = OwmPollutionData(api_list, lat, lon, api_key)
 
-    # Create sensor entities
     sensors = [OwmPollutionSensor(data, sensor_type, entry.entry_id) for sensor_type in SENSOR_TYPES]
-
     async_add_entities(sensors, update_before_add=True)
 
     return True
@@ -99,22 +85,21 @@ class OwmPollutionData:
     """Fetch and store OWM data for requested endpoints."""
 
     def __init__(self, api_list, lat, lon, appid):
-        self._state = None
         self.lat = lat
         self.lon = lon
         self.appid = appid
-        self.data = None
         self.api_list = api_list
+        self.data = None
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    def update(self, sensorType):
-        """Call out to the owm2json requestor and parse JSON."""
+    def update(self, sensor_type):
+        """Call out to the OWM requestor and parse JSON."""
         _LOGGER.debug("Updating OWM pollution sensors for %s,%s", self.lat, self.lon)
-        myOWM = owm2json.owmRequestor(self.api_list, self.lat, self.lon, self.appid)
         try:
+            myOWM = owm2json.owmRequestor(self.api_list, self.lat, self.lon, self.appid)
             self.data = json.loads(myOWM.GetData())
         except requests.exceptions.RequestException as exc:
-            _LOGGER.error("Error occurred while fetching data: %r", exc)
+            _LOGGER.error("Error fetching data: %r", exc)
             self.data = None
             return False
 
@@ -127,24 +112,18 @@ def safe_value(val):
         return 0.0
 
 
-class OwmPollutionSensor(Entity):
+class OwmPollutionSensor(SensorEntity):
     """Representation of a Sensor for one pollutant / forecast value."""
 
-    def __init__(self, data, sensor_type, entry_id: str | None = None):
-        """Initialize the sensor."""
+    def __init__(self, data: OwmPollutionData, sensor_type: str, entry_id: str | None = None):
         self.data = data
         self.type = sensor_type
-        self._entry_id = entry_id  # optional: used when created via config entry
-        if self.type == "uvi" and self.type in SENSOR_TYPES:
-            self._name = SENSOR_PREFIX_ROOT + SENSOR_TYPES[self.type][0]
-        else:
-            self._name = SENSOR_PREFIX_ROOT + SENSOR_PREFIX_POLLUTION + SENSOR_TYPES[self.type][0]
+        self._entry_id = entry_id
+        self._name = SENSOR_PREFIX_ROOT + SENSOR_PREFIX_POLLUTION + SENSOR_TYPES[self.type][0]
         self._unit = SENSOR_TYPES[self.type][1]
         self._icon = SENSOR_TYPES[self.type][2]
         self._state = None
         self._extra_state_attributes = None
-
-        # Unique id per sensor (type + coordinates)
         self._unique_id = f"owm_pollution_{self.type}_{self.data.lat}_{self.data.lon}"
 
     @property
@@ -173,7 +152,6 @@ class OwmPollutionSensor(Entity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Return device information so all sensors are grouped under one device."""
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.data.lat}_{self.data.lon}")},
             name=f"OWM Air Quality ({self.data.lat}, {self.data.lon})",
@@ -184,55 +162,31 @@ class OwmPollutionSensor(Entity):
 
     def update(self):
         """Fetch new state data for the sensor."""
-        # Trigger throttled data update
         self.data.update(self.type)
-        owmData = self.data.data
+        owm_data = self.data.data
+
+        if not owm_data:
+            self._state = None
+            return
 
         try:
-            if not owmData:
-                self._state = None
-                return
-
-            if self.type == 'co':
-                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["co"])
-
-            elif self.type == 'no':
-                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["no"])
-
-            elif self.type == 'no2':
-                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["no2"])
-
-            elif self.type == 'o3':
-                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["o3"])
-
-            elif self.type == 'so2':
-                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["so2"])
-
-            elif self.type == 'nh3':
-                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["nh3"])
-
-            elif self.type == 'pm2_5':
-                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["pm2_5"])
-
-            elif self.type == 'pm10':
-                self._state = safe_value(owmData["air_pollution"]["list"][0]["components"]["pm10"])
-
-            elif self.type == 'aqi':
-                self._state = safe_value(owmData["air_pollution"]["list"][0]["main"]["aqi"])
-
-            elif self.type == 'forecast':
-                # Forecast stored under air_pollution/forecast in the requestor results
-                self._state = safe_value(owmData.get("air_pollution/forecast", {}).get("list", [{}])[0].get("main", {}).get("aqi"))
-                # copy current components and then add forecast list
-                self._extra_state_attributes = dict(owmData["air_pollution"]["list"][0]["components"])
+            if self.type in ["co", "no", "no2", "o3", "so2", "nh3", "pm2_5", "pm10"]:
+                self._state = safe_value(owm_data["air_pollution"]["list"][0]["components"][self.type])
+            elif self.type == "aqi":
+                self._state = safe_value(owm_data["air_pollution"]["list"][0]["main"]["aqi"])
+            elif self.type == "forecast":
+                forecast_list = owm_data.get("air_pollution/forecast", {}).get("list", [])
+                self._state = safe_value(forecast_list[0]["main"]["aqi"] if forecast_list else None)
+                # Add extra attributes for forecast
+                self._extra_state_attributes = dict(owm_data["air_pollution"]["list"][0]["components"])
                 self._extra_state_attributes["forecast"] = []
-                for f in owmData.get("air_pollution/forecast", {}).get("list", []):
+                for f in forecast_list:
                     fdict = {"datetime": datetime.fromtimestamp(f["dt"], tz=timezone.utc).isoformat()}
-                    components = {k: safe_value(v) for k, v in f["components"].items()}
+                    components = {k: safe_value(v) for k, v in f.get("components", {}).items()}
                     fdict.update(components)
                     fdict.update(f.get("main", {}))
                     self._extra_state_attributes["forecast"].append(fdict)
 
-        except (ValueError, KeyError, TypeError) as exc:
+        except (KeyError, TypeError, ValueError) as exc:
             _LOGGER.debug("Error parsing OWM data for %s: %s", self.type, exc)
             self._state = None
