@@ -1,4 +1,4 @@
-"""Platform for OpenWeatherMap Air Quality sensors."""
+"""Platform for OpenWeatherMap Air Quality sensors with EPA AQI calculation."""
 
 from __future__ import annotations
 import logging
@@ -20,10 +20,10 @@ import owm2json
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=10)
-MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=5)
+SCAN_INTERVAL = timedelta(minutes=30)
+MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=15)
 
-# YAML compatibility (optional)
+# YAML compatibility
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_API_KEY): cv.string,
     vol.Required(CONF_LATITUDE): cv.string,
@@ -48,7 +48,6 @@ SENSOR_TYPES = {
 
 DOMAIN = "openweathermap_air_quality"
 
-
 async def async_setup_platform(hass: HomeAssistant, config, async_add_entities: AddEntitiesCallback, discovery_info=None):
     """Legacy YAML setup support."""
     lat = config.get(CONF_LATITUDE)
@@ -63,6 +62,7 @@ async def async_setup_platform(hass: HomeAssistant, config, async_add_entities: 
         return False
 
     entities = [OwmPollutionSensor(data, sensor_type) for sensor_type in SENSOR_TYPES]
+    entities.append(OwmEpaAqiSensor(data))  # Add EPA AQI sensor
     async_add_entities(entities, update_before_add=True)
 
 
@@ -76,6 +76,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     data = OwmPollutionData(api_list, lat, lon, api_key)
 
     sensors = [OwmPollutionSensor(data, sensor_type, entry.entry_id) for sensor_type in SENSOR_TYPES]
+    sensors.append(OwmEpaAqiSensor(data, entry.entry_id))  # Add EPA AQI sensor
     async_add_entities(sensors, update_before_add=True)
 
     return True
@@ -189,4 +190,142 @@ class OwmPollutionSensor(SensorEntity):
 
         except (KeyError, TypeError, ValueError) as exc:
             _LOGGER.debug("Error parsing OWM data for %s: %s", self.type, exc)
+            self._state = None
+
+
+# ---------- EPA AQI SENSOR ----------
+
+# Breakpoints in μg/m³ (converted from ppm where necessary)
+EPA_BREAKPOINTS = {
+    "pm2_5": [
+        (0.0, 12.0, 0, 50),
+        (12.1, 35.4, 51, 100),
+        (35.5, 55.4, 101, 150),
+        (55.5, 150.4, 151, 200),
+        (150.5, 250.4, 201, 300),
+        (250.5, 350.4, 301, 400),
+        (350.5, 500.4, 401, 500),
+    ],
+    "pm10": [
+        (0, 54, 0, 50),
+        (55, 154, 51, 100),
+        (155, 254, 101, 150),
+        (255, 354, 151, 200),
+        (355, 424, 201, 300),
+        (425, 504, 301, 400),
+        (505, 604, 401, 500),
+    ],
+    "co": [
+        (0.0, 242, 0, 50),
+        (245, 516, 51, 100),
+        (522, 611, 101, 150),
+        (617, 837, 151, 200),
+        (854, 1858, 201, 300),
+        (1870, 2487, 301, 400),
+        (2502, 4119, 401, 500),
+    ],
+    "so2": [
+        (0, 44, 0, 50),
+        (45, 89, 51, 100),
+        (90, 185, 101, 150),
+        (186, 304, 151, 200),
+        (305, 604, 201, 300),
+        (605, 804, 301, 400),
+        (805, 1004, 401, 500),
+    ],
+    "no2": [
+        (0, 53, 0, 50),
+        (54, 100, 51, 100),
+        (101, 360, 101, 150),
+        (361, 649, 151, 200),
+        (650, 1249, 201, 300),
+        (1250, 1649, 301, 400),
+        (1650, 2049, 401, 500),
+    ],
+    "o3": [
+        (0.0, 70, 0, 50),
+        (71, 85, 51, 100),
+        (86, 105, 101, 150),
+        (106, 200, 151, 200),
+        (201, 300, 201, 300),
+        (301, 400, 301, 400),
+        (401, 500, 401, 500),
+    ],
+}
+
+def calculate_aqi(pollutant, concentration):
+    """Calculate EPA AQI for a single pollutant using μg/m³."""
+    if concentration is None:
+        return None
+    for c_low, c_high, i_low, i_high in EPA_BREAKPOINTS[pollutant]:
+        if c_low <= concentration <= c_high:
+            return round((i_high - i_low) / (c_high - c_low) * (concentration - c_low) + i_low)
+    return None
+
+
+class OwmEpaAqiSensor(SensorEntity):
+    """Sensor for estimated EPA AQI based on OWM components."""
+
+    def __init__(self, data: OwmPollutionData, entry_id: str | None = None):
+        self.data = data
+        self._entry_id = entry_id
+        self._name = "OWM EPA AQI"
+        self._unit = "AQI"
+        self._icon = "mdi:air-filter"
+        self._state = None
+        self._extra_state_attributes = None
+        self._unique_id = f"owm_epa_aqi_{self.data.lat}_{self.data.lon}"
+
+    @property
+    def unique_id(self):
+        return self._unique_id
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def icon(self):
+        return self._icon
+
+    @property
+    def state(self):
+        return self._state
+
+    @property
+    def unit_of_measurement(self):
+        return self._unit
+
+    @property
+    def extra_state_attributes(self):
+        return self._extra_state_attributes
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{self.data.lat}_{self.data.lon}")},
+            name=f"OWM EPA AQI ({self.data.lat}, {self.data.lon})",
+            manufacturer="OpenWeatherMap",
+            model="Air Pollution API",
+            configuration_url="https://openweathermap.org/api",
+        )
+
+    def update(self):
+        self.data.update(None)
+        owm_data = self.data.data
+        if not owm_data:
+            self._state = None
+            return
+
+        try:
+            components = owm_data["air_pollution"]["list"][0]["components"]
+            aqi_values = []
+            for p in ["pm2_5", "pm10", "co", "so2", "no2", "o3"]:
+                aqi = calculate_aqi(p, safe_value(components.get(p)))
+                if aqi is not None:
+                    aqi_values.append(aqi)
+            self._state = max(aqi_values) if aqi_values else None
+            self._extra_state_attributes = components
+        except (KeyError, TypeError, ValueError) as exc:
+            _LOGGER.debug("Error calculating EPA AQI: %s", exc)
             self._state = None
