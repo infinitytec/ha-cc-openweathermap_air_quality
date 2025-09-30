@@ -176,21 +176,13 @@ class OwmPollutionSensor(Entity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information so all sensors are grouped under one device."""
-        # Use lat/lon as the device unique identifier so multiple locations are possible.
-        identifiers = {(DOMAIN, f"{self.data.lat}_{self.data.lon}")}
-        info = DeviceInfo(
-            identifiers=identifiers,
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{self.data.lat}_{self.data.lon}")},
             name=f"OWM Air Quality ({self.data.lat}, {self.data.lon})",
             manufacturer="OpenWeatherMap",
             model="Air Pollution API",
             configuration_url="https://openweathermap.org/api",
         )
-        # If this entity was created from a config entry, provide the config_entry_id
-        # so HA links the device to that entry (useful for UI and removal).
-        if getattr(self, "_entry_id", None):
-            info = info.__class__(**{**info.__dict__, "via_device": None})  # no-op placeholder for immutability
-            # Note: device registry will link device -> config entry automatically when created via async_setup_entry
-        return info
 
     def update(self):
         """Fetch new state data for the sensor."""
