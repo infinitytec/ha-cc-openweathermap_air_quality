@@ -76,14 +76,22 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities(entities, update_before_add=True)
 
 
-async def async_setup_entry(hass, entry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> bool:
+    """Set up sensors from a config entry."""
+
     api_key = entry.data[CONF_API_KEY]
     lat = entry.data[CONF_LATITUDE]
     lon = entry.data[CONF_LONGITUDE]
 
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, "sensor")
-    )
+    # Create your data object
+    api_list = ["air_pollution/forecast", "air_pollution", "onecall"]
+    data = OwmPollutionData(api_list, lat, lon, api_key)
+
+    # Create sensor entities
+    sensors = [OwmPollutionSensor(data, sensor_type, entry.entry_id) for sensor_type in SENSOR_TYPES]
+
+    async_add_entities(sensors, update_before_add=True)
+
     return True
 
 
