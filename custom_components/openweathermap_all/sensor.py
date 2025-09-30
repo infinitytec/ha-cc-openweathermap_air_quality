@@ -76,25 +76,15 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities(entities, update_before_add=True)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    """
-    UI config flow setup (ConfigEntry).
+async def async_setup_entry(hass, entry):
+    api_key = entry.data[CONF_API_KEY]
+    lat = entry.data[CONF_LATITUDE]
+    lon = entry.data[CONF_LONGITUDE]
 
-    Expects entry.data to contain CONF_API_KEY, CONF_LATITUDE, CONF_LONGITUDE.
-    """
-    lat = entry.data.get(CONF_LATITUDE)
-    lon = entry.data.get(CONF_LONGITUDE)
-    appid = entry.data.get(CONF_API_KEY)
-    api_list = ["air_pollution/forecast", "air_pollution", "onecall"]
-
-    try:
-        data = OwmPollutionData(api_list, lat, lon, appid)
-    except requests.exceptions.HTTPError as error:
-        _LOGGER.error("OWM2JSON initialization failed: %s", error)
-        return False
-
-    entities = [OwmPollutionSensor(data, resource.lower(), entry_id=entry.entry_id) for resource in SENSOR_TYPES]
-    async_add_entities(entities, update_before_add=True)
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "sensor")
+    )
+    return True
 
 
 class OwmPollutionData:
