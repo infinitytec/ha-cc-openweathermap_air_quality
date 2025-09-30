@@ -13,9 +13,9 @@ Forked from ha-cc-openweathermap_all by [viktak](https://github.com/viktak/ha-cc
 Improvements over the original version (not all are implemented yet):
 - Dropped the unsupported UV index sensor
 - Virtual device for better UI navigation
-- UI configuration (not started)
-- EPA estimated AQI (not started)
-- Ensures values do not drop to negative numbers (in testing)
+- UI configuration
+- EPA estimated AQI (in testing)
+- Ensures values do not drop to negative numbers
 - Updated units to match Home Assistant guidelines
 
 
