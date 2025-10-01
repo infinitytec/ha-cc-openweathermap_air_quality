@@ -309,7 +309,6 @@ class OwmEpaAqiSensor(SensorEntity):
             model="Air Pollution API",
             configuration_url="https://openweathermap.org/api",
         )
-
     def update(self):
         self.data.update(None)
         owm_data = self.data.data
@@ -319,13 +318,29 @@ class OwmEpaAqiSensor(SensorEntity):
 
         try:
             components = owm_data["air_pollution"]["list"][0]["components"]
-            aqi_values = []
+            aqi_values = {}
             for p in ["pm2_5", "pm10", "co", "so2", "no2", "o3"]:
                 aqi = calculate_aqi(p, safe_value(components.get(p)))
                 if aqi is not None:
-                    aqi_values.append(aqi)
-            self._state = max(aqi_values) if aqi_values else None
+                    aqi_values[p] = aqi
+
+            if not aqi_values:
+                self._state = None
+                return
+
+            max_aqi = max(aqi_values.values())
+            pm25_aqi = aqi_values.get("pm2_5")
+
+            if pm25_aqi is not None:
+                # Weighted: average of max AQI and PM2.5 AQI
+                self._state = round((max_aqi + pm25_aqi) / 2)
+            else:
+                # Fallback: just max AQI
+                self._state = max_aqi
+
             self._extra_state_attributes = components
+            self._extra_state_attributes["aqi_components"] = aqi_values
+
         except (KeyError, TypeError, ValueError) as exc:
             _LOGGER.debug("Error calculating EPA AQI: %s", exc)
             self._state = None
