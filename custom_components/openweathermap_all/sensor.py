@@ -266,17 +266,18 @@ def calculate_aqi(pollutant, concentration):
 class OwmEpaAqiSensor(SensorEntity):
     """Sensor for estimated EPA AQI based on OWM components."""
 
+    _attr_device_class = "aqi"
+    _attr_state_class = "measurement"
+    _attr_native_unit_of_measurement = None  # AQI is unitless
+
     def __init__(self, data: OwmPollutionData, entry_id: str | None = None):
         self.data = data
         self._entry_id = entry_id
-        self._unit = None
         self._name = "OWM EPA AQI"
         self._icon = "mdi:air-filter"
         self._state = None
         self._extra_state_attributes = None
-        self._attr_native_unit_of_measurement = None
         self._unique_id = f"owm_epa_aqi_{self.data.lat}_{self.data.lon}"
-        self._attr_state_class = "measurement"
 
     @property
     def unique_id(self):
@@ -291,16 +292,9 @@ class OwmEpaAqiSensor(SensorEntity):
         return self._icon
 
     @property
-    def state(self):
-        return self._state
-        
-    @property
     def native_value(self):
-        return self.data.aqi
-        
-    @property
-    def native_unit_of_measurement(self):
-        return self._unit
+        """Return the numeric AQI value (integer)."""
+        return self._state
 
     @property
     def extra_state_attributes(self):
