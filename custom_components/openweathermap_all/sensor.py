@@ -270,7 +270,6 @@ class OwmEpaAqiSensor(SensorEntity):
         self.data = data
         self._entry_id = entry_id
         self._name = "OWM EPA AQI"
-        self._unit = "AQI"
         self._icon = "mdi:air-filter"
         self._state = None
         self._extra_state_attributes = None
