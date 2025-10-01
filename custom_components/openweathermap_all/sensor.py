@@ -274,7 +274,9 @@ class OwmEpaAqiSensor(SensorEntity):
         self._icon = "mdi:air-filter"
         self._state = None
         self._extra_state_attributes = None
+        self._attr_native_unit_of_measurement = None
         self._unique_id = f"owm_epa_aqi_{self.data.lat}_{self.data.lon}"
+        self._attr_state_class = "measurement"
 
     @property
     def unique_id(self):
@@ -291,7 +293,11 @@ class OwmEpaAqiSensor(SensorEntity):
     @property
     def state(self):
         return self._state
-
+        
+    @property
+    def native_value(self):
+        return self.data.aqi
+        
     @property
     def native_unit_of_measurement(self):
         return self._unit
