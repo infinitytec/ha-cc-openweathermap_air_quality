@@ -304,7 +304,7 @@ class OwmEpaAqiSensor(SensorEntity):
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.data.lat}_{self.data.lon}")},
-            name=f"OWM EPA AQI ({self.data.lat}, {self.data.lon})",
+            name=f"OWM AQI ({self.data.lat}, {self.data.lon})",
             manufacturer="OpenWeatherMap",
             model="Air Pollution API",
             configuration_url="https://openweathermap.org/api",
