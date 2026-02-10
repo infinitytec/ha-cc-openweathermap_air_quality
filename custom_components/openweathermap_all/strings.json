@@ -1,0 +1,15 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "OpenWeatherMap Air Quality",
+        "description": "Enter your OpenWeatherMap credentials and location.",
+        "data": {
+          "api_key": "API Key",
+          "latitude": "Latitude",
+          "longitude": "Longitude"
+        }
+      }
+    }
+  }
+}
