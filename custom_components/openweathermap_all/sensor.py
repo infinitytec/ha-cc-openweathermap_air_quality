@@ -273,7 +273,7 @@ class OwmEpaAqiSensor(SensorEntity):
     def __init__(self, data: OwmPollutionData, entry_id: str | None = None):
         self.data = data
         self._entry_id = entry_id
-        self._name = "OWM EPA AQI"
+        self._name = "OWM Estimated EPA AQI"
         self._icon = "mdi:air-filter"
         self._state = None
         self._extra_state_attributes = None
